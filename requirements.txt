@@ -1,0 +1,23 @@
+# Django Web Framework
+Django==4.2
+
+# Django REST Framework for API
+djangorestframework==3.14.0
+
+# CORS headers for cross-origin requests
+django-cors-headers==4.3.1
+
+# Environment variable management
+python-decouple==3.8
+
+# Timezone support
+pytz
+
+# Production server (optional)
+gunicorn==21.2.0
+
+# Database (if using PostgreSQL in production)
+# psycopg2-binary==2.9.9
+
+# For deployment on PythonAnywhere/Heroku
+whitenoise==6.6.0
