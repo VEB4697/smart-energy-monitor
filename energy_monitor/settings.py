@@ -24,7 +24,7 @@ if config('DEBUG', default=True, cast=bool):
 else:
     ALLOWED_HOSTS = [
         h.strip().split(':')[0]
-        for h in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+        for h in config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.vercel.app,vercel.app').split(',')
         if h.strip()
     ]
 
@@ -47,6 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise for static files
     'corsheaders.middleware.CorsMiddleware',  # CORS middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -110,6 +111,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 MEDIA_URL = '/media/'

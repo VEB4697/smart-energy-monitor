@@ -19,5 +19,8 @@ gunicorn==21.2.0
 # Database (if using PostgreSQL in production)
 # psycopg2-binary==2.9.9
 
-# For deployment on PythonAnywhere/Heroku
+# For deployment on PythonAnywhere/Heroku/Vercel
 whitenoise==6.6.0
+
+# Vercel Python runtime support
+python-multipart==0.0.6
