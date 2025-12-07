@@ -18,6 +18,11 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <SoftwareSerial.h>
+
+// --- Sensor & Actuator Pin Definitions ---
+#define PZEM_RX_PIN D5  // GPIO14
+#define PZEM_TX_PIN D6  // GPIO12
 
 // ===== WiFi Configuration =====
 const char* ssid = "vaibhav";           // Replace with your WiFi SSID
@@ -29,7 +34,8 @@ const char* apiKey = "fifLzEGJKga63vOLcuBkTMGtIDBQzFJ5FQLiU59zRTI";  // API key 
 
 // ===== PZEM Configuration =====
 // Using Software Serial: RX=D7(GPIO13), TX=D8(GPIO15)
-PZEM004Tv30 pzem(13, 15);
+SoftwareSerial pzemSerial(PZEM_RX_PIN, PZEM_TX_PIN);
+PZEM004Tv30 pzem(pzemSerial);
 
 // ===== OLED Configuration =====
 #define SCREEN_WIDTH 128
