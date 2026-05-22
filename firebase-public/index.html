@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether Energy Monitor — Real-time Dashboard</title>
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Lucide Icons via CDN for clean, modern aesthetics -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js for smooth data visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- Main Application Wrapper -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation / Status Panel -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <i data-lucide="zap" class="logo-icon animate-pulse"></i>
+        </div>
+        <div class="brand-text">
+          <h2>Aether Energy</h2>
+          <span>Smart Monitoring System</span>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Connectivity</h3>
+        <div class="status-card">
+          <div class="status-indicator">
+            <span class="pulse-dot green" id="networkStatusDot"></span>
+            <span id="networkStatusText">Connecting...</span>
+          </div>
+          <div class="device-info">
+            <p><strong>Device:</strong> ESP8266 + PZEM-004T</p>
+            <p><strong>Database:</strong> <span id="dbNameLabel">Firebase RTDB</span></p>
+            <p><strong>Last Data:</strong> <span id="lastSeenTimestamp">Never</span></p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Alerts Log</h3>
+        <div class="alerts-log" id="alertsLogContainer">
+          <div class="empty-alerts">
+            <i data-lucide="shield-check" class="empty-icon"></i>
+            <p>System operational. No active warnings.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-footer">
+        <button class="icon-btn" id="themeToggleButton" title="Toggle Theme">
+          <i data-lucide="moon" id="themeIcon"></i>
+          <span>Dark Mode</span>
+        </button>
+        <button class="icon-btn" id="configButton" title="Configure Firebase">
+          <i data-lucide="settings"></i>
+          <span>Database Setup</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-text">
+          <h1>Live Energy Telemetry</h1>
+          <p>Real-time analytics and intelligent optimization audits</p>
+        </div>
+        <div class="top-bar-actions">
+          <div class="quick-stat">
+            <span class="label">Total Power Draw:</span>
+            <span class="value" id="topPowerValue">0.0 W</span>
+          </div>
+          <div class="quick-stat">
+            <span class="label">Power Factor:</span>
+            <span class="value text-warning" id="topPfValue">0.00</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Live Metrics Dashboard Grid -->
+      <section class="dashboard-grid">
+        
+        <!-- Voltage Card -->
+        <div class="metric-card" id="voltageCard">
+          <div class="card-header">
+            <div class="icon-wrapper voltage">
+              <i data-lucide="activity"></i>
+            </div>
+            <span class="card-label">Voltage</span>
+          </div>
+          <div class="card-body">
+            <div class="value-display">
+              <span class="value" id="voltageVal">0.0</span>
+              <span class="unit">V</span>
+            </div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill voltage" id="voltageGauge" style="width: 0%"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>0V</span>
+                <span>Normal (220-240V)</span>
+                <span>260V</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Card -->
+        <div class="metric-card" id="currentCard">
+          <div class="card-header">
+            <div class="icon-wrapper current">
+              <i data-lucide="droplet"></i>
+            </div>
+            <span class="card-label">Current</span>
+          </div>
+          <div class="card-body">
+            <div class="value-display">
+              <span class="value" id="currentVal">0.000</span>
+              <span class="unit">A</span>
+            </div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill current" id="currentGauge" style="width: 0%"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>0A</span>
+                <span>Max Capacity (100A)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Power Card -->
+        <div class="metric-card" id="powerCard">
+          <div class="card-header">
+            <div class="icon-wrapper power">
+              <i data-lucide="gauge"></i>
+            </div>
+            <span class="card-label">Active Power</span>
+          </div>
+          <div class="card-body">
+            <div class="value-display">
+              <span class="value" id="powerVal">0.0</span>
+              <span class="unit">W</span>
+            </div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill power" id="powerGauge" style="width: 0%"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>0W</span>
+                <span>High Load Threshold (5kW)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Energy Card -->
+        <div class="metric-card" id="energyCard">
+          <div class="card-header">
+            <div class="icon-wrapper energy">
+              <i data-lucide="battery-charging"></i>
+            </div>
+            <span class="card-label">Total Consumption</span>
+          </div>
+          <div class="card-body">
+            <div class="value-display">
+              <span class="value" id="energyVal">0.000</span>
+              <span class="unit">kWh</span>
+            </div>
+            <div class="gauge-container">
+              <div class="summary-text">
+                <i data-lucide="calendar"></i>
+                <span>Cumulative energy recorded since launch.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Frequency Card -->
+        <div class="metric-card" id="frequencyCard">
+          <div class="card-header">
+            <div class="icon-wrapper frequency">
+              <i data-lucide="waveform"></i>
+            </div>
+            <span class="card-label">Line Frequency</span>
+          </div>
+          <div class="card-body">
+            <div class="value-display">
+              <span class="value" id="frequencyVal">0.0</span>
+              <span class="unit">Hz</span>
+            </div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill frequency" id="frequencyGauge" style="width: 0%"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>45Hz</span>
+                <span>Standard (50Hz)</span>
+                <span>65Hz</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Power Factor Card -->
+        <div class="metric-card" id="pfCard">
+          <div class="card-header">
+            <div class="icon-wrapper pf">
+              <i data-lucide="percent"></i>
+            </div>
+            <span class="card-label">Power Factor</span>
+          </div>
+          <div class="card-body">
+            <div class="value-display">
+              <span class="value" id="pfVal">0.00</span>
+            </div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill pf" id="pfGauge" style="width: 0%"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>0.0 (Bad)</span>
+                <span>Ideal (1.0)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Advanced Analytics Charts Section -->
+      <section class="charts-section">
+        <div class="section-card">
+          <div class="card-tabs">
+            <button class="tab-btn active" data-tab="liveStream">Real-time Power Waveform</button>
+            <button class="tab-btn" data-tab="historyLog">24-Hour Load Analysis</button>
+          </div>
+          <div class="chart-container">
+            <canvas id="loadChart"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Claude AI Assistant Drawer (Right Panel) -->
+    <section class="assistant-panel">
+      <div class="assistant-header">
+        <div class="assistant-avatar">
+          <i data-lucide="sparkles" class="avatar-icon"></i>
+        </div>
+        <div class="assistant-title">
+          <h3>Claude Energy Advisor</h3>
+          <span class="status-indicator"><span class="pulse-dot orange"></span>Live Metrics Link Active</span>
+        </div>
+      </div>
+      
+      <!-- Chat Conversation Area -->
+      <div class="chat-conversation" id="chatConversation">
+        <div class="chat-bubble assistant">
+          <div class="avatar-sm"><i data-lucide="sparkles"></i></div>
+          <div class="message-content">
+            <p>Hello! I am your <strong>Aether Energy Assistant</strong>, modeled after Claude. I am connected directly to your live PZEM-004T energy telemetry.</p>
+            <p>I can perform a live efficiency audit, explain electrical anomalies, or help you reduce power draw. What would you like to analyze?</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Recommended Prompts Suggestions -->
+      <div class="suggestions-panel">
+        <button class="suggestion-btn" data-prompt="Analyze my power factor and suggest how to optimize it.">
+          <i data-lucide="percent"></i> Audit Power Factor
+        </button>
+        <button class="suggestion-btn" data-prompt="Is my current AC line voltage safe and stable?">
+          <i data-lucide="shield-alert"></i> Voltage Safety Check
+        </button>
+        <button class="suggestion-btn" data-prompt="Summarize my current power usage and estimate daily costs.">
+          <i data-lucide="calculator"></i> Estimate Energy Cost
+        </button>
+        <button class="suggestion-btn" data-prompt="How does this PZEM-004T and ESP8266 setup work?">
+          <i data-lucide="help-circle"></i> Explain Tech Stack
+        </button>
+      </div>
+      
+      <!-- Message Input Block -->
+      <div class="chat-input-container">
+        <textarea id="chatInput" placeholder="Ask Claude about your energy usage..." rows="1"></textarea>
+        <button id="sendChatBtn" class="send-btn">
+          <i data-lucide="send"></i>
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Settings / Database Setup Modal Overlay -->
+  <div class="modal-overlay" id="configModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-wrapper">
+          <i data-lucide="database" class="title-icon"></i>
+          <h3>Firebase Live Connection Setup</h3>
+        </div>
+        <button class="close-btn" id="closeConfigModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="instruction-text">
+          To achieve <strong>zero-maintenance real-time streaming</strong>, input your Firebase Database Configuration below. These values are saved securely in your local browser storage and never uploaded anywhere else.
+        </p>
+        
+        <form id="firebaseConfigForm">
+          <div class="form-group">
+            <label for="cfgDatabaseURL">Firebase Realtime Database URL</label>
+            <input type="url" id="cfgDatabaseURL" placeholder="https://your-project-default-rtdb.firebaseio.com/" required autocomplete="off">
+            <span class="help-text">Your unique Firebase Realtime Database Endpoint. Remember to copy this into your ESP8266 <code>main.cpp</code> as well!</span>
+          </div>
+
+          <div class="form-group-row">
+            <div class="form-group">
+              <label for="cfgApiKey">API Key (Optional)</label>
+              <input type="text" id="cfgApiKey" placeholder="AIzaSyA..." autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="cfgProjectId">Project ID (Optional)</label>
+              <input type="text" id="cfgProjectId" placeholder="smart-energy-monitor-eb80e" autocomplete="off">
+            </div>
+          </div>
+          
+          <hr class="modal-divider">
+          
+          <div class="modal-title-wrapper sub-section">
+            <i data-lucide="bell-ring" class="title-icon"></i>
+            <h3>Interactive Safety Alerts</h3>
+          </div>
+          <p class="instruction-text">Set your custom safety thresholds. The UI will instantly trigger a visual indicator, alarm log, and system notification if breached.</p>
+          
+          <div class="form-group-row">
+            <div class="form-group">
+              <label for="cfgMaxPower">Power Draw Limit (Watts)</label>
+              <input type="number" id="cfgMaxPower" value="5000" min="1" max="23000">
+            </div>
+            <div class="form-group">
+              <label for="cfgMinPf">Min Power Factor</label>
+              <input type="number" id="cfgMinPf" value="0.70" step="0.01" min="0.00" max="1.00">
+            </div>
+          </div>
+
+          <div class="form-group-row">
+            <div class="form-group">
+              <label for="cfgMinVoltage">Min Voltage (V)</label>
+              <input type="number" id="cfgMinVoltage" value="200" min="80" max="260">
+            </div>
+            <div class="form-group">
+              <label for="cfgMaxVoltage">Max Voltage (V)</label>
+              <input type="number" id="cfgMaxVoltage" value="250" min="200" max="280">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn secondary" id="resetConfigBtn">Restore Defaults</button>
+            <button type="submit" class="btn primary">Activate Live Stream</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio elements for alert notification -->
+  <audio id="alertSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-200.wav" preload="auto"></audio>
+
+  <!-- Core App Controller Script -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

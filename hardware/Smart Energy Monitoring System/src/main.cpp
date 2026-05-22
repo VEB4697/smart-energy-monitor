@@ -14,6 +14,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <PZEM004Tv30.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -31,6 +32,11 @@ const char* password = "VEB@4697";   // Replace with your WiFi password
 // ===== Server Configuration =====
 const char* serverUrl = "http://192.168.0.195:8000/api/energy-data/"; // Replace with your Django server URL
 const char* apiKey = "fifLzEGJKga63vOLcuBkTMGtIDBQzFJ5FQLiU59zRTI";  // API key for authentication (set in Django)
+
+// ===== Firebase Configuration =====
+#define USE_FIREBASE true
+const char* firebaseHost = "https://smart-energy-monitor-default-rtdb.firebaseio.com/"; // Replace with your Firebase Database URL (include trailing slash)
+const char* firebaseAuth = ""; // Optional Database Secret (if auth rules are enabled)
 
 // ===== PZEM Configuration =====
 // Using Software Serial: RX=D7(GPIO13), TX=D8(GPIO15)
@@ -50,6 +56,9 @@ const unsigned long displayInterval = 2000;  // 2 seconds per screen
 const unsigned long sendInterval = 10000;    // Send data every 10 seconds
 int displayPage = 0;
 
+unsigned long lastFirebaseHistorySend = 0;
+const unsigned long firebaseHistoryInterval = 60000;  // Append history every 60 seconds
+
 // ===== Data Variables =====
 float voltage = 0.0;
 float current = 0.0;
@@ -63,6 +72,7 @@ void connectWiFi();
 void readSensorData();
 void updateDisplay();
 void sendDataToServer();
+void sendDataToFirebase();
 void displayBootScreen();
 void displayError(String message);
 
@@ -119,6 +129,7 @@ void loop() {
   // Send data to server every 10 seconds
   if (millis() - lastDataSend >= sendInterval) {
     sendDataToServer();
+    sendDataToFirebase();
     lastDataSend = millis();
   }
 
@@ -333,4 +344,97 @@ void displayError(String message) {
   display.setCursor(0, 45);
   display.println(message);
   display.display();
+}
+
+// ===== Send Data to Firebase =====
+void sendDataToFirebase() {
+  #if USE_FIREBASE
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Firebase: WiFi not connected.");
+    return;
+  }
+
+  WiFiClientSecure client;
+  client.setInsecure(); // Bypass SSL certificate verification for ease of deployment
+
+  HTTPClient http;
+  
+  // 1. Update Latest Live Metrics (PUT)
+  String latestUrl = String(firebaseHost) + "latest.json";
+  if (firebaseAuth && strlen(firebaseAuth) > 0) {
+    latestUrl += "?auth=" + String(firebaseAuth);
+  }
+
+  Serial.println("\n--- Streaming to Firebase (Latest) ---");
+  Serial.print("URL: ");
+  Serial.println(latestUrl);
+
+  if (http.begin(client, latestUrl)) {
+    http.addHeader("Content-Type", "application/json");
+
+    String jsonPayload = "{";
+    jsonPayload += "\"voltage\":" + String(voltage, 2) + ",";
+    jsonPayload += "\"current\":" + String(current, 3) + ",";
+    jsonPayload += "\"power\":" + String(power, 2) + ",";
+    jsonPayload += "\"energy\":" + String(energy, 3) + ",";
+    jsonPayload += "\"frequency\":" + String(frequency, 2) + ",";
+    jsonPayload += "\"power_factor\":" + String(pf, 3) + ",";
+    jsonPayload += "\"timestamp\":{\".sv\":\"timestamp\"}";
+    jsonPayload += "}";
+
+    int httpResponseCode = http.PUT(jsonPayload);
+
+    if (httpResponseCode > 0) {
+      Serial.print("Firebase PUT Success: ");
+      Serial.println(httpResponseCode);
+    } else {
+      Serial.print("Firebase PUT Error: ");
+      Serial.println(http.errorToString(httpResponseCode).c_str());
+    }
+    http.end();
+  } else {
+    Serial.println("Firebase PUT: Unable to connect.");
+  }
+
+  // 2. Append to History (POST) - Throttled to every 60 seconds
+  if (millis() - lastFirebaseHistorySend >= firebaseHistoryInterval || lastFirebaseHistorySend == 0) {
+    String historyUrl = String(firebaseHost) + "history.json";
+    if (firebaseAuth && strlen(firebaseAuth) > 0) {
+      historyUrl += "?auth=" + String(firebaseAuth);
+    }
+
+    Serial.println("\n--- Streaming to Firebase (History Append) ---");
+    Serial.print("URL: ");
+    Serial.println(historyUrl);
+
+    if (http.begin(client, historyUrl)) {
+      http.addHeader("Content-Type", "application/json");
+
+      String jsonPayload = "{";
+      jsonPayload += "\"voltage\":" + String(voltage, 2) + ",";
+      jsonPayload += "\"current\":" + String(current, 3) + ",";
+      jsonPayload += "\"power\":" + String(power, 2) + ",";
+      jsonPayload += "\"energy\":" + String(energy, 3) + ",";
+      jsonPayload += "\"frequency\":" + String(frequency, 2) + ",";
+      jsonPayload += "\"power_factor\":" + String(pf, 3) + ",";
+      jsonPayload += "\"timestamp\":{\".sv\":\"timestamp\"}";
+      jsonPayload += "}";
+
+      int httpResponseCode = http.POST(jsonPayload);
+
+      if (httpResponseCode > 0) {
+        Serial.print("Firebase POST Success: ");
+        Serial.println(httpResponseCode);
+        lastFirebaseHistorySend = millis();
+      } else {
+        Serial.print("Firebase POST Error: ");
+        Serial.println(http.errorToString(httpResponseCode).c_str());
+      }
+      http.end();
+    } else {
+      Serial.println("Firebase POST: Unable to connect.");
+    }
+  }
+  Serial.println("--------------------------------------\n");
+  #endif
 }
